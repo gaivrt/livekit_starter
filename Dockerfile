@@ -1,17 +1,17 @@
-# This sample Dockerfile creates a production-ready container for a LiveKit voice AI agent
+# 这个示例Dockerfile为LiveKit语音AI助手创建一个生产就绪的容器
 # syntax=docker/dockerfile:1
 
-# Use the official UV Python base image with Python 3.11 on Debian Bookworm
-# UV is a fast Python package manager that provides better performance than pip
-# We use the slim variant to keep the image size smaller while still having essential tools
+# 使用官方UV Python基础镜像，搭载Python 3.11运行在Debian Bookworm上
+# UV是一个快速的Python包管理器，比pip提供更好的性能
+# 我们使用slim变体来保持镜像大小更小，同时仍然拥有必要的工具
 FROM ghcr.io/astral-sh/uv:python3.11-bookworm-slim
 
-# Keeps Python from buffering stdout and stderr to avoid situations where
-# the application crashes without emitting any logs due to buffering.
+# 防止Python缓冲stdout和stderr，避免应用崩溃时
+# 由于缓冲而没有发出任何日志的情况
 ENV PYTHONUNBUFFERED=1
 
-# Create a non-privileged user that the app will run under.
-# See https://docs.docker.com/develop/develop-images/dockerfile_best-practices/#user
+# 创建一个非特权用户，应用程序将在该用户下运行
+# 参见：https://docs.docker.com/develop/develop-images/dockerfile_best-practices/#user
 ARG UID=10001
 RUN adduser \
     --disabled-password \
@@ -21,53 +21,53 @@ RUN adduser \
     --uid "${UID}" \
     appuser
 
-# Install build dependencies required for Python packages with native extensions
-# gcc: C compiler needed for building Python packages with C extensions
-# python3-dev: Python development headers needed for compilation
-# We clean up the apt cache after installation to keep the image size down
+# 安装构建Python包时需要的依赖项，特别是有原生扩展的包
+# gcc: 构建带有C扩展的Python包所需的C编译器
+# python3-dev: 编译时需要的Python开发头文件
+# 安装后清理apt缓存以保持镜像大小较小
 RUN apt-get update && \
     apt-get install -y \
     gcc \
     python3-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Set the working directory to the user's home directory
-# This is where our application code will live
+# 设置工作目录为用户的家目录
+# 这是我们的应用程序代码将存放的位置
 WORKDIR /home/appuser
 
-# Copy all application files into the container
-# This includes source code, configuration files, and dependency specifications
-# (Excludes files specified in .dockerignore)
+# 将所有应用程序文件复制到容器中
+# 这包括源代码、配置文件和依赖项规范
+# （排除.dockerignore中指定的文件）
 COPY . .
 
-# Change ownership of all app files to the non-privileged user
-# This ensures the application can read/write files as needed
+# 将所有应用文件的所有权更改为非特权用户
+# 这确保应用程序可以根据需要读取/写入文件
 RUN chown -R appuser:appuser /home/appuser
 
-# Switch to the non-privileged user for all subsequent operations
-# This improves security by not running as root
+# 切换到非特权用户进行所有后续操作
+# 这通过不以root身份运行来提高安全性
 USER appuser
 
-# Create a cache directory for the user
-# This is used by UV and Python for caching packages and bytecode
+# 为用户创建缓存目录
+# 这被UV和Python用于缓存包和字节码
 RUN mkdir -p /home/appuser/.cache
 
-# Install Python dependencies using UV's lock file
-# --locked ensures we use exact versions from uv.lock for reproducible builds
-# This creates a virtual environment and installs all dependencies
-# Ensure your uv.lock file is checked in for consistency across environments
+# 使用UV的锁定文件安装Python依赖项
+# --locked确保我们使用uv.lock中的确切版本进行可重现的构建
+# 这会创建一个虚拟环境并安装所有依赖项
+# 确保您的uv.lock文件已检入以保持跨环境的一致性
 RUN uv sync --locked
 
-# Pre-download any ML models or files the agent needs
-# This ensures the container is ready to run immediately without downloading
-# dependencies at runtime, which improves startup time and reliability
+# 预下载代理需要的任何ML模型或文件
+# 这确保容器可以立即运行，无需在运行时下载
+# 依赖项，这提高了启动时间和可靠性
 RUN uv run src/agent.py download-files
 
-# Expose the healthcheck port
-# This allows Docker and orchestration systems to check if the container is healthy
+# 暴露健康检查端口
+# 这允许Docker和编排系统检查容器是否健康
 EXPOSE 8081
 
-# Run the application using UV
-# UV will activate the virtual environment and run the agent
-# The "start" command tells the worker to connect to LiveKit and begin waiting for jobs
+# 使用UV运行应用程序
+# UV将激活虚拟环境并运行代理
+# "start"命令告诉worker连接到LiveKit并开始等待作业
 CMD ["uv", "run", "src/agent.py", "start"]

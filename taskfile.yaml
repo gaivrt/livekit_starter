@@ -1,22 +1,29 @@
+# Task自动化配置文件
+# 定义了项目开发和部署中常用的任务和命令
 version: "3"
 output: interleaved
-dotenv: [".env"]
+dotenv: [".env"]  # 自动加载.env文件中的环境变量
 
 tasks:
+  # 后创建任务：在模板被实例化为沙盒或引导项目后运行
   post_create:
-    desc: "Runs after this template is instantiated as a Sandbox or Bootstrap"
+    desc: "在此模板被实例化为沙盒或引导项目后运行"
     cmds:
-      - echo -e "To try the new agent directly in your terminal:\r\n"
+      - echo -e "要在终端中直接尝试新的语音助手：\r\n"
       - echo -e "\tcd {{.ROOT_DIR}}\r"
       - echo -e "\tuv sync\r"
       - echo -e "\tuv run src/agent.py download-files\r"
       - echo -e "\tuv run src/agent.py console\r\n"
 
+  # 安装任务：为本地开发引导应用程序
   install:
-    desc: "Bootstrap application for local development"
+    desc: "为本地开发引导应用程序环境"
     cmds:
-      - "uv sync"
+      - "uv sync"  # 同步依赖项到虚拟环境
+      
+  # 开发任务：启动开发模式的语音助手
   dev:
-    interactive: true
+    desc: "在开发模式下运行语音助手"
+    interactive: true  # 启用交互模式
     cmds:
-      - "uv run src/agent.py dev"
+      - "uv run src/agent.py dev"  # 运行开发版本的助手
